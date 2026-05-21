@@ -1,0 +1,22 @@
+/build/
+/.vscode/
+
+# Local dataset folder. Keep course dataset local unless your supervisors explicitly want it in GitHub.
+/data/
+
+# Executables and temporary files
+*.o
+*.a
+*.so
+*.exe
+*.out
+
+# CMake temporary files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Editor/system noise
+.DS_Store
+*.swp
