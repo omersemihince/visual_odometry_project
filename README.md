@@ -60,3 +60,61 @@ Where we took the average from the image 0 and 1 as a robustness measure against
 Of course we also have trajectory from instant 0 to instant 1,
 
 $$X^{cam}_{world}=\begin{pmatrix}R&t\\\\0&1\end{pmatrix}$$
+
+## Projective ICP
+
+First we need to match the id-ed landmarks with the landmarks in the map for the k-th measurement/incoming image.
+
+### For the landmarks in the map
+
+Carry out projective-ICP,
+
+#### State Space
+
+Qualify the domain → $X^k \in SE(3)$ 
+  
+  $$X^k=\begin{pmatrix} R^k & t^k \\\\ 0 & 1 \end{pmatrix}$$ 
+
+Euclidian parametrization of the perturbation
+
+→ $\Delta x\in \mathbb{R}^6\\\\:\vert\\: \Delta x = (x\\:\\:\\:y\\:\\:\\:z\\:\\:\\:\alpha_x\\:\\:\\:\alpha_y\\:\\:\\:\alpha_z)^T$
+
+Box plus operator → $X^k \boxplus \Delta x = v2t(\Delta x)X^k$
+
+#### Observation Space
+
+Qualifying the domain
+
+→ $z^m\in \mathbb{R}^2\\:\vert\\:z^m=(u^m\\:\\:\\:v^m)^T$ ,where $p_{img}=(u^m\\:\\:\\:v^m\\:\\:\\:1)^T$
+
+Observation model → $z^m =h^m(x)=proj(K{X^k}^{-1}p^k)$
+
+#### Error functions 
+
+→ $e^{n,m}(X^k)=h^n(X^k)-z^m$
+
+→ $e^{n,m}(X^k\boxplus \Delta x)=h^n(X^k\boxplus \Delta x)-z^m$
+
+Where $X^k$ will give us the $k$-th instant of the camera w.r.t world. 
+
+### For the landmarks not in the map
+
+If there exist a landmark that is not on the map; find if there is correspondence in previous images, and if so perform the triangulation to add those landmarks into the map (if not store it for later as it is).
+    
+The camera posses of the two images w.r.t world are known, and let’s say the old image is the j-th image.
+
+  $z_j = (u_j\\:\\:v_j\\:\\:1)^T$ & $z_k = (u_k\\:\\:v_k\\:\\:1)^T$ 
+  
+  undo the Camera matrix, $\bar{d} = K^{-1}z$
+  
+  normilize, $d = \frac{\bar{d}}{\vert\vert\bar{d}\vert\vert}$
+    
+then for the newly discovered landmark $n$,
+    
+  $p^n_{world}=t_j + R_j\\:d_i\\:s_j = t_k + R_k\\:d_k\\:s_k$
+    
+  $$[R_j\\:d_j\\:\\:\\:\\:-R_k\\:d_k]\begin{Bmatrix}s_j\\\\s_k\end{Bmatrix}=t_k-t_j$$
+    
+find $s_j$ & $s_k$ and accept to the map iff they are $\geq0$.
+    
+  $p^n_{world}=\frac{1}{2}(t_j + R_j\\:d_i\\:s_j\\:\\:+\\:\\: t_k + R_k\\:d_k\\:s_k)$
