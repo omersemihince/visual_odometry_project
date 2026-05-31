@@ -1,5 +1,4 @@
 /*
-version 0.1
 author: Ömer (Semih) İnce
 
 This file is part of the Visual Odometry project, 
@@ -23,22 +22,37 @@ Structure is as fololws,
 
 //Defining one detected landmark in one image with its pixel location and ID.
 struct Observation {
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW //Allocate memory for Eigen types
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    int landmark_id = -1; //ID of the landmark, -1 if not assigned yet; so they are invalid
-    Eigen::Vector2f uv = Eigen::Vector2f::Zero(); //Pixel location of the landmark in the image (u,v)
+    int landmark_id = -1;
+    int local_id = -1;
+
+    Eigen::Vector2f uv = Eigen::Vector2f::Zero();
+
+    //Dataset
+    Eigen::Matrix<float, 10, 1> appearance =
+        Eigen::Matrix<float, 10, 1>::Zero();
+
+    bool has_appearance = false;
 };
 
 //Defining one full observation of an image, which includes the image number and all the detected landmarks in that image together with camera pose.
 struct Frame{
-    EIGEN_MAKE_ALIGNED_OPERATOR_NEW //Allocate memory for Eigen types
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
-    int seq = -1; //Number of the image / sequence    
-    
-    std::vector<Observation> observations; //All the detected (visible) landmarks in that image
-    
-    Eigen::Isometry3f T_wc = Eigen::Isometry3f::Identity(); //Pose of the camera (transformation matrix from the world to the camera frame in SE(3) T_wc = [R_wc, t_wc; 0, 1] so p_c = T_wc * p_w)
-    bool pose_valid = false; 
+    int seq = -1;
+
+    std::vector<Observation> observations;
+
+    Eigen::Isometry3f T_wc = Eigen::Isometry3f::Identity();
+    bool pose_valid = false;
+
+    //Dataset
+    Eigen::Vector3f odometry_pose_2d = Eigen::Vector3f::Zero();
+    Eigen::Vector3f groundtruth_pose_2d = Eigen::Vector3f::Zero();
+
+    bool has_odometry_pose = false;
+    bool has_groundtruth_pose = false;
 };
 
 //Defining the Lanmark points (positions)

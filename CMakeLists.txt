@@ -83,3 +83,15 @@ target_link_libraries(test_initialization
     PRIVATE
         vo_core
 )
+
+# -----------------------------
+# Dataset reader test executable
+# -----------------------------
+add_executable(test_dataset_reader
+    tests/test_dataset_reader.cpp
+)
+
+target_link_libraries(test_dataset_reader
+    PRIVATE
+        vo_core
+)
