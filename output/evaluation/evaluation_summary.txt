@@ -1,0 +1,28 @@
+VO result
+success: 1
+message: VO done. poses=121 map=490
+
+Pose evaluation
+matched_pose_pairs: 120
+mean_rotation_trace_error: 0.015775265
+median_rotation_trace_error: -0.000217140
+mean_translation_ratio_est_over_gt: 5.439391136
+median_translation_ratio_est_over_gt: 5.013310432
+point_scale_to_gt: 0.199469000
+
+Map evaluation
+matched_landmarks: 490
+map_rmse_raw: 10.709588051
+map_mean_error_raw: 9.347296715
+map_rigid_aligned_rmse: 0.392405570
+map_rigid_aligned_mean_error: 0.170609072
+has_map_rigid_alignment: 1
+
+Map rigid alignment
+R:
+-0.001353711  0.004457437  0.999989152
+-0.999998927  0.000309759 -0.001355171
+-0.000315796 -0.999989927  0.004457013
+t:  0.268917799  0.005388498 -0.023444891
+
+status: Evaluation done.

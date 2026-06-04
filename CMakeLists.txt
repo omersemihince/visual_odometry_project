@@ -26,7 +26,6 @@ add_library(repo_picp
 target_include_directories(repo_picp
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/src/repo_picp
-        ${OpenCV_INCLUDE_DIRS}
 )
 
 target_link_libraries(repo_picp
@@ -36,7 +35,7 @@ target_link_libraries(repo_picp
 )
 
 # -----------------------------
-# visual odometry code
+# Visual Odometry core code
 # -----------------------------
 add_library(vo_core
     src/dataset_io.cpp
@@ -50,7 +49,6 @@ target_include_directories(vo_core
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/src/repo_picp
-        ${OpenCV_INCLUDE_DIRS}
 )
 
 target_link_libraries(vo_core

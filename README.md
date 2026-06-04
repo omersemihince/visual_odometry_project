@@ -1,11 +1,28 @@
-# Physical Understanding of the Project
+# Detailed Theoretical Procedure followed in the Project
 
 We have a robot with camera so a moving camera. We are in a world full of id-ed landmarks, yet we don’t have the map of the world. At each observation we are receiving a 2D image from the camera that contains some of the id-d landmarks.
 
-We will use epipolar geometry to initialize our algorithm and map.
-Then we will use projective-ICP to perform odometry, while keep using epipolar geometry for the initial placement of the newly incoming landmark observations.
+We will use epipolar geometry to initialize our algorithm and map. Then we will use projective-ICP to perform odometry. 
 
-# Detailed Theoretical Procedure followed in the Project
+So the main visual odometry pipeline will have the following structure, defining k as the k-th discrete-time / measurement instant,
+
+Initialization k = 0,1
+
+  Take initial measurements. → Frame 0 & Frame 1
+
+  Perform \textbf{Epipolar Geometry} to recover initial pose at instant 1 w.r.t the world (Frame 0).
+
+  Perform \textbf{Triangulation} on the common landmarks of measurement 0 and 1 to create the initial map. 
+
+Visual Odometry k \geq 2
+
+  Take the k-th measurement.
+
+  Perform \textbf{ICP} on the landmarks that has correspondence in the map.
+
+  Estimate the k-th instant pose.
+
+  Using the pose, triangulate the landmarks that has no correspondence on the map but has correspondences in the old measurements. Relatedly, update the map.
 
 ## Initialization
 
@@ -118,3 +135,43 @@ then for the newly discovered landmark $n$,
 find $s_j$ & $s_k$ and accept to the map iff they are $\geq0$.
     
   $p^n_{world}=\frac{1}{2}(t_j + R_j\\:d_i\\:s_j\\:\\:+\\:\\: t_k + R_k\\:d_k\\:s_k)$
+
+### Implementation into the main Pipeline
+
+Algorithm that is inspired by RANSAC however a brutally simplified version (and it is deterministic no randomization) can be implemented. Instead of trying many random guess, try six possible guess, choose the best one. Start the PICP with high kernel and then as PICP accepted reduce the kernel and use the accepted PICP solution as initial guess. When PICP is rejected, try with higher kernel and if accepted try to reduce the kernel. If PICP is not accepted at all rescue kernels attempted for continuity of the map, and if this does not work algorithm reports failure.
+
+For the k-th frame,
+
+1. Build trusted 3D–2D matches.
+2. Generate multiple initial guesses:
+    - full constant SE(3) motion
+    - translation-only motion
+    - rotation-only motion
+    - previous pose
+    - damped constant motion
+    - faster constant motion
+3. Run PICP from each guess.
+4. Pick the best candidate by scoring logic,
+    - accepted candidate beats rejected candidate
+    - then larger inlier count
+    - then larger inlier/projectable ratio
+    - then larger inlier/known ratio
+    - then lower median error as tie-breaker only
+    - then lower mean error as final tie-breaker only
+5. Extract inliers from the best candidate.
+6. Rerun/refine PICP using only those inlier correspondences.
+7. Validate the refined pose again on all correspondences.
+8. Define the acceptance thresehold through raito of projectable points to inliers.
+9. If accepted → mark it as 1st order accepted PICP and rerun with lower kernel and 1st order accepted PICP as initial guess.
+10. If accepted → mark it as 2nd order accepted PICP and rerun with lowest kernel and 2nd order accepted PICP as initial guess.
+11. If rejected → Rerun the sequence using higher kernel.
+12. If rejected → Rerun the sequence using highest kernel.
+13. If accepted → Use the accepted PICP as initial guess and try lower kernel until lowest one reached. 
+14. For any PICP that is accepted at least with accaptable kernel (use the accepted PICP with lowest kernel) add to the map, grow the map and continue.
+15. If PICP succeed with high kernels but not with accaptable kernel accept it for the continuity of the trajectory but do not update the map with it.   
+16. Even if PICP accepted, if the number of projectible landmarks less then somethershold do not update the map with the result but use it only for continuity of the trajectory.  
+17. If PICP rejected tryout first rescue kernel.
+18. If PICP rejected tryout second rescue kernel. 
+19. If still no accepted PICP tryout with less strict acceptance threshold. 
+20. If after “rescue operations” PICP accepted → rerun algorithm using accepted PICP as initial guess. 
+21. If after “rescue operations” still fails report failure.
