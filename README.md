@@ -1,4 +1,111 @@
-# Detailed Theoretical Procedure followed in the Project
+# Visual Odometry Project
+This project aims to construct a monocular Visual Odometry pipeline for a moving camera observing landmarks in the images. While camera parameters known, neither camera nor landmark posiitons known. From sequence of 2D image measurements, system estimates the camera trajectory and the 3D landmark map.
+
+Constructed pipeline, first performs epipolar initialization and triangulation on the first two image provided to initialize the pose of the camera and the map. For later frames, projective ICP performed on the landmarks present in the map, and newly observed landmarks added to the map using triangulation. For detailed procedure please see the chapter "Detailed Theoretical Procedure followed in the Project" and following subchapter "PICP Implementation into the main Pipeline".
+
+Brief summary of the projective ICP logic used in the pipeline is as follows, 
+  For each new frame, already-triangulated landmarks observed in the current image are used as 3D–2D correspondences. 
+  Several initial pose guesses are tested, including constant SE(3) motion, translation-only motion, rotation-only motion, previous pose, damped motion, and faster motion. 
+  The best candidate is selected by acceptance status, inlier count, inlier/projectable ratio. 
+  PICP is run with progressively adjusted robust kernels.
+  If a pose is accepted only with a large kernel, it is used for trajectory continuity but map growth is disabled.
+
+Final evalution of the constructed map and the estimated trajectory done using the ground truth once after the process done fully. Evalution provides pose errors, translition scale consistency, map error, and visual plots.
+
+The project uses the ready-to use dataset. Default data set folder is data/. The VO pipeline uses camera.dat and the image measurements meas-XXXX.dat. The landmark IDs in the measurements are used for data association. The files world.dat and trajectory.dat are not used by the VO algorithm; they are loaded only after VO finishes, inside the evaluation stage.
+
+## Build and Run Instructions
+
+Requirements: CMake, a C++17 compiler, Eigen3, OpenCV, Python3, NumPy, and Matplotlib.
+
+From the repository root:
+
+```bash
+rm -rf build
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+```
+
+Optional checks:
+
+```bash
+./build/test_dataset_reader --dataset data
+./build/test_initialization --synthetic
+```
+
+Run the full Visual Odometry pipeline and write the evaluation files:
+
+```bash
+rm -rf output/evaluation
+./build/vo_main data output/evaluation
+```
+
+Generate the plots used in the report:
+
+```bash
+python3 tools/plot_evaluation.py output/evaluation output/evaluation/figures
+```
+
+The generated results are saved under:
+
+```text
+output/evaluation/
+output/evaluation/figures/
+```
+
+`world.dat` and `trajectory.dat` are used only during the evaluation stage, not by the VO pipeline itself.
+
+## Results & Discussion
+Ovearall result can be summarized as folowwing,
+  Full sequence successfully processed, 121 pose estimated and 490 landmark recovered.
+  Trajectory follows the ground truth well perfectly in most of the path and the error peaks in some regions.
+  The map is accurate after rigid allignment, with RMSE 0.392.
+  Main weakness are the peaks rotation error and scale ratio in the few frames.
+
+To recover the mismatch that comes from the fact that the pipeline uses the first frame as world frame not the real one, rigid alignment has been performed. And for the arbitrary scaling mismatch, scale correction performed.
+
+Estimated trajectory follows the ground truth trajectory closely eventhough there are small deviations especially at the upper right part of the trajectory. The rotation error is close to zero for the bigger portion of the sequence. Larger rotation errors appear in short intervals, mainly around the frames where the camera motion changes direction. These peaks explain why before the new initial guess algorithm, in the first version the pICP algorithm worked poorly. 
+
+Reconstrudted map contains 490 landmarks and their position mostly overlaps with the groundtruth, altough thereare considerable mismatch in few indivual landmarks. The raw map RMSE is high because the VO map is expressed in the first camera frame, while the ground-truth map is expressed in the dataset/world frame. After rigid alignment, the map RMSE decreases to 0.392 and the mean landmark error becomes 0.171.
+
+Scale is reasonably consistent, the scale ratio stays around 5 so the map is scaled by 0.199. Local peaks in the scale ratio happens in the same frames as rotation error peaks.
+
+### Output Summary
+|Reconstruction||
+|---------------|-------------|
+|VO success|Yes|
+|#Estimated Pose|121|
+|#Reconstruct Landmark|490|
+|Pose Evaluation||
+|---------------|-------------|
+|Mean Rotation trace error|0.0158|
+|Median Rotation trace error|-0.0002|
+|Mean trnslation scale ratio|5.4394|
+|Median translation scale ratio|5.0133|
+|Map scale factor|0.1995|
+|Map Evaluation||
+|---------------|-------------|
+|Rigid-aligned map RMSE|0.3924|
+|Rigid-aligned mean landmar error|0.1706|
+
+### Plots
+
+#### Trajectory: estimate vs ground truth
+![Trajectory](output/evaluation/figures/01_trajectory_top_view.png)
+
+#### World top view: landmarks and poses
+![World top view](output/evaluation/figures/02_world_top_view.png)
+
+#### 3D landmarks and trajectory
+![World 3D](output/evaluation/figures/03_world_3d.png)
+
+#### Rotation error
+![Rotation error](output/evaluation/figures/04_rotation_error.png)
+
+#### Translation scale ratio
+![Translation ratio](output/evaluation/figures/05_translation_ratio.png)
+
+## Detailed Theoretical Procedure followed in the Project
 
 We have a robot with camera so a moving camera. We are in a world full of id-ed landmarks, yet we don’t have the map of the world. At each observation we are receiving a 2D image from the camera that contains some of the id-d landmarks.
 
@@ -24,7 +131,7 @@ Visual Odometry k \geq 2
 
   Using the pose, triangulate the landmarks that has no correspondence on the map but has correspondences in the old measurements. Relatedly, update the map.
 
-## Initialization
+### Initialization
 
 First two image observations, image 0 & image 1, being taken,
 
@@ -78,15 +185,15 @@ Of course we also have trajectory from instant 0 to instant 1,
 
 $$X^{cam}_{world}=\begin{pmatrix}R&t\\\\0&1\end{pmatrix}$$
 
-## Projective ICP
+### Projective ICP
 
 First we need to match the id-ed landmarks with the landmarks in the map for the k-th measurement/incoming image.
 
-### For the landmarks in the map
+#### For the landmarks in the map
 
 Carry out projective-ICP,
 
-#### State Space
+##### State Space
 
 Qualify the domain → $X^k \in SE(3)$ 
   
@@ -98,7 +205,7 @@ Euclidian parametrization of the perturbation
 
 Box plus operator → $X^k \boxplus \Delta x = v2t(\Delta x)X^k$
 
-#### Observation Space
+##### Observation Space
 
 Qualifying the domain
 
@@ -106,7 +213,7 @@ Qualifying the domain
 
 Observation model → $z^m =h^m(x)=proj(K{X^k}^{-1}p^k)$
 
-#### Error functions 
+##### Error functions 
 
 → $e^{n,m}(X^k)=h^n(X^k)-z^m$
 
@@ -114,7 +221,7 @@ Observation model → $z^m =h^m(x)=proj(K{X^k}^{-1}p^k)$
 
 Where $X^k$ will give us the $k$-th instant of the camera w.r.t world. 
 
-### For the landmarks not in the map
+#### For the landmarks not in the map
 
 If there exist a landmark that is not on the map; find if there is correspondence in previous images, and if so perform the triangulation to add those landmarks into the map (if not store it for later as it is).
     
@@ -136,7 +243,7 @@ find $s_j$ & $s_k$ and accept to the map iff they are $\geq0$.
     
   $p^n_{world}=\frac{1}{2}(t_j + R_j\\:d_i\\:s_j\\:\\:+\\:\\: t_k + R_k\\:d_k\\:s_k)$
 
-### Implementation into the main Pipeline
+### PICP Implementation into the main Pipeline
 
 Algorithm that is inspired by RANSAC however a brutally simplified version (and it is deterministic no randomization) can be implemented. Instead of trying many random guess, try six possible guess, choose the best one. Start the PICP with high kernel and then as PICP accepted reduce the kernel and use the accepted PICP solution as initial guess. When PICP is rejected, try with higher kernel and if accepted try to reduce the kernel. If PICP is not accepted at all rescue kernels attempted for continuity of the map, and if this does not work algorithm reports failure.
 
