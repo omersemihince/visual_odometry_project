@@ -117,15 +117,15 @@ Initialization k = 0,1
 
   Take initial measurements. → Frame 0 & Frame 1
 
-  Perform \textbf{Epipolar Geometry} to recover initial pose at instant 1 w.r.t the world (Frame 0).
+  Perform Epipolar Geometry to recover initial pose at instant 1 w.r.t the world (Frame 0).
 
-  Perform \textbf{Triangulation} on the common landmarks of measurement 0 and 1 to create the initial map. 
+  Perform Triangulation on the common landmarks of measurement 0 and 1 to create the initial map. 
 
-Visual Odometry k \geq 2
+Visual Odometry k $\geq$ 2
 
   Take the k-th measurement.
 
-  Perform \textbf{ICP} on the landmarks that has correspondence in the map.
+  Perform ICP on the landmarks that has correspondence in the map.
 
   Estimate the k-th instant pose.
 
